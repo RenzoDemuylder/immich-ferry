@@ -1,0 +1,102 @@
+name: immich-ferry-e2e
+
+x-immich: &immich
+  image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-v3.4.1}
+  restart: "no"
+  healthcheck:
+    test: ["CMD", "immich-healthcheck"]
+    interval: 3s
+    timeout: 5s
+    start_period: 180s
+    retries: 100
+
+x-immich-env: &immich-env
+  DB_USERNAME: postgres
+  DB_PASSWORD: postgres
+  DB_DATABASE_NAME: immich
+  IMMICH_MACHINE_LEARNING_ENABLED: "false"
+  IMMICH_IGNORE_MOUNT_CHECK_ERRORS: "true"
+
+x-db: &db
+  image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
+  command: -c fsync=off -c shared_preload_libraries=vchord.so -c config_file=/var/lib/postgresql/data/postgresql.conf
+  shm_size: 128mb
+  environment:
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    POSTGRES_DB: immich
+    POSTGRES_INITDB_ARGS: "--data-checksums"
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U postgres -d immich"]
+    interval: 2s
+    timeout: 5s
+    retries: 60
+
+x-redis: &redis
+  image: docker.io/valkey/valkey:9@sha256:418652cfb58ef879d4978c33553735d7147016032d5aefaa14c828e611eb9dfd
+  healthcheck:
+    test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+    interval: 2s
+    timeout: 5s
+    retries: 60
+
+services:
+  immich-a:
+    <<: *immich
+    environment:
+      <<: *immich-env
+      DB_HOSTNAME: db-a
+      REDIS_HOSTNAME: redis-a
+    ports:
+      - "127.0.0.1:${IMMICH_A_PORT:-22283}:2283"
+    depends_on:
+      db-a: {condition: service_healthy}
+      redis-a: {condition: service_healthy}
+  db-a:
+    <<: *db
+  redis-a:
+    <<: *redis
+
+  immich-b:
+    <<: *immich
+    environment:
+      <<: *immich-env
+      DB_HOSTNAME: db-b
+      REDIS_HOSTNAME: redis-b
+    ports:
+      - "127.0.0.1:${IMMICH_B_PORT:-22284}:2283"
+    depends_on:
+      db-b: {condition: service_healthy}
+      redis-b: {condition: service_healthy}
+  db-b:
+    <<: *db
+  redis-b:
+    <<: *redis
+
+  immich-ferry:
+    profiles: [daemon]
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: immich-ferry:e2e
+    environment:
+      IMMICH_A_URL: http://immich-a:2283
+      IMMICH_B_URL: http://immich-b:2283
+      IMMICH_A_API_KEY: ${E2E_A_KEY:-}
+      IMMICH_B_API_KEY: ${E2E_B_KEY:-}
+      SYNC_A_ALBUM_ID: ${E2E_DAEMON_ALBUM_A:-}
+      SYNC_B_ALBUM_ID: ${E2E_DAEMON_ALBUM_B:-}
+      SYNC_INTERVAL: ${E2E_DAEMON_INTERVAL:-10s}
+      LOG_FORMAT: text
+      LOG_LEVEL: debug
+    volumes:
+      - sync-data:/data
+    stop_grace_period: 60s
+    ports:
+      - "127.0.0.1:${SYNC_PORT:-22880}:8080"
+    depends_on:
+      immich-a: {condition: service_healthy}
+      immich-b: {condition: service_healthy}
+
+volumes:
+  sync-data:

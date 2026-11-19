@@ -1,0 +1,26 @@
+services:
+  immich-ferry:
+    image: immich-ferry:latest   # built by `make image` (also tagged :dev and :0.1.0)
+    container_name: immich-ferry
+    restart: unless-stopped
+    env_file: sync.env
+    environment:
+      SYNC_TMP_DIR: /tmp
+      SYNC_TMP_BUDGET: "17179869184"   # 16 GiB of scratch for in-flight transfers; size for your largest video
+    volumes:
+      - immich-ferry-data:/data
+      - immich-ferry-tmp:/tmp           # disk-backed scratch space (default)
+    read_only: true
+    # WARNING: a RAM-backed /tmp counts against host/container memory. Only use it with a memory limit
+    # well above the tmpfs size, and a SYNC_TMP_BUDGET below that size. Opt-in (replace the volume above):
+    # tmpfs:
+    #   - /tmp:size=4g,mode=1777
+    #   (and set SYNC_TMP_BUDGET to ~3g, and e.g. mem_limit: 8g)
+    stop_grace_period: 60s
+    ports:
+      - "127.0.0.1:8080:8080"
+    # healthcheck: uses the image default (/immich-ferry healthcheck)
+
+volumes:
+  immich-ferry-data:
+  immich-ferry-tmp:

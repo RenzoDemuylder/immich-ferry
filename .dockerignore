@@ -1,0 +1,10 @@
+.git
+bin
+dist
+.e2e
+test/
+docs/
+examples/
+*.md
+Dockerfile
+.dockerignore

@@ -1,0 +1,9 @@
+/bin/
+/dist/
+/.e2e/
+*.test
+*.out
+coverage.*
+.DS_Store
+/tmp/
+/.vscode/
