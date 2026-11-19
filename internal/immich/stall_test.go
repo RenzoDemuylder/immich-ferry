@@ -24,7 +24,9 @@ func TestDownloadStallWatchdog(t *testing.T) {
 		<-r.Context().Done() // stop sending
 	}))
 	defer ts.Close()
-	cl, _ := immich.New(immich.Config{BaseURL: ts.URL, APIKey: "k", StallTimeout: 150 * time.Millisecond})
+	// Trickle check off: 1000 bytes is also below the per-window minimum, so on a slow
+	// runner "too slow" could fire before "stalled" (covered by TestDownloadTricklingTooSlow).
+	cl, _ := immich.New(immich.Config{BaseURL: ts.URL, APIKey: "k", StallTimeout: 150 * time.Millisecond, MinStallBytes: -1})
 	start := time.Now()
 	var sb strings.Builder
 	n, err := cl.DownloadOriginal(context.Background(), "id", &sb, nil)
