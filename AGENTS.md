@@ -79,6 +79,7 @@ These protect users' photo libraries. Each has tests; keep them green and add a 
   leaves albums and assets untouched, except the **teardown**: when everyone a created, shared album (`DiscoveredPair.Created`)
   was shared with has left it (confirmed by GET), the sync user leaves the original album, optionally trashes its own uploads,
   deletes the created album and unpairs; steps are persisted and resumed, and the pair is never synced again. With
+  `SYNC_DISCOVERY_TEARDOWN=false` no teardown starts (the pair keeps syncing) and one in progress is paused, never synced. With
   `SYNC_DISCOVERY_DEDICATED_USER`, an unpinned album the sync user owns without other members is never synced or paired. Dry-run/`validate` never create albums or write `discovery.json`. With
   `SYNC_DISCOVERY_SHARE_*`, a created album is shared in the create request itself (never created unshared); members of
   existing albums are never changed (the sync user only ever removes itself, in a teardown).

@@ -47,6 +47,8 @@ type fileSync struct {
 		A    []string `yaml:"a"`
 		B    []string `yaml:"b"`
 		Role string   `yaml:"role"`
+		// Teardown: see SYNC_DISCOVERY_TEARDOWN.
+		Teardown *bool `yaml:"teardown"`
 		// TrashOnTeardown: see SYNC_DISCOVERY_TEARDOWN_TRASH.
 		TrashOnTeardown *bool `yaml:"trashOnTeardown"`
 		// DedicatedUser: see SYNC_DISCOVERY_DEDICATED_USER.
@@ -268,6 +270,9 @@ func (l *loader) load() {
 	if s.DiscoveryShare.Role != "" {
 		cfg.Engine.DiscoveryShareRole = strings.ToLower(strings.TrimSpace(s.DiscoveryShare.Role))
 	}
+	if s.DiscoveryShare.Teardown != nil {
+		cfg.Engine.DiscoveryTeardownOff = !*s.DiscoveryShare.Teardown
+	}
 	setB(s.DiscoveryShare.TrashOnTeardown, &cfg.Engine.DiscoveryTeardownTrash)
 	setB(s.DiscoveryShare.DedicatedUser, &cfg.Engine.DiscoveryDedicatedUser)
 	if f.StateDir != "" {
@@ -369,6 +374,9 @@ func (l *loader) load() {
 	if v, ok := l.env("SYNC_DISCOVERY_SHARE_ROLE"); ok {
 		cfg.Engine.DiscoveryShareRole = strings.ToLower(v)
 	}
+	teardown := !cfg.Engine.DiscoveryTeardownOff
+	l.envBool("SYNC_DISCOVERY_TEARDOWN", &teardown)
+	cfg.Engine.DiscoveryTeardownOff = !teardown
 	l.envBool("SYNC_DISCOVERY_TEARDOWN_TRASH", &cfg.Engine.DiscoveryTeardownTrash)
 	l.envBool("SYNC_DISCOVERY_DEDICATED_USER", &cfg.Engine.DiscoveryDedicatedUser)
 	if v, ok := l.env("HTTP_ADDR"); ok {
@@ -551,6 +559,9 @@ func (l *loader) validate() {
 	}
 	if c.Engine.DiscoveryTeardownTrash && len(c.Engine.DiscoveryShare[0]) == 0 && len(c.Engine.DiscoveryShare[1]) == 0 {
 		l.fail("SYNC_DISCOVERY_TEARDOWN_TRASH (discoveryShare.trashOnTeardown) only applies to shared albums: set SYNC_DISCOVERY_SHARE_A or _B")
+	}
+	if c.Engine.DiscoveryTeardownTrash && c.Engine.DiscoveryTeardownOff {
+		l.fail("SYNC_DISCOVERY_TEARDOWN_TRASH (discoveryShare.trashOnTeardown) needs the teardown: unset SYNC_DISCOVERY_TEARDOWN=false")
 	}
 	if c.Engine.DiscoveryDedicatedUser && len(c.Engine.DiscoveryShare[0]) == 0 && len(c.Engine.DiscoveryShare[1]) == 0 {
 		l.fail("SYNC_DISCOVERY_DEDICATED_USER (discoveryShare.dedicatedUser) only applies to shared albums: set SYNC_DISCOVERY_SHARE_A or _B")

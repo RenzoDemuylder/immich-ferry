@@ -79,7 +79,7 @@ func (d *discovery) backfill(p *state.DiscoveredPair, als [2]immich.Album) {
 // a listing with a fresh GET. It reports whether the pair is (now) in teardown, and
 // whether the check failed (pair kept, not synced this cycle).
 func (d *discovery) shouldTeardown(p *state.DiscoveredPair, als [2]immich.Album) (yes, failed bool) {
-	if p.Created == nil || p.Created.Side > 1 || len(p.Created.SharedWith) == 0 {
+	if d.e.o.DiscoveryTeardownOff || p.Created == nil || p.Created.Side > 1 || len(p.Created.SharedWith) == 0 {
 		return false, false
 	}
 	c := Side(p.Created.Side)
@@ -102,6 +102,11 @@ func (d *discovery) shouldTeardown(p *state.DiscoveredPair, als [2]immich.Album)
 func (d *discovery) teardown(p *state.DiscoveredPair) (keep bool) {
 	c := Side(p.Created.Side)
 	o := 1 - c
+	if d.e.o.DiscoveryTeardownOff { // only reached for a teardown already in progress
+		d.note(&d.rep.Skipped, AlbumNote{Pair: p.Name, Side: c.String(), AlbumID: p.AlbumIDs[c],
+			Reason: "teardown in progress but disabled (SYNC_DISCOVERY_TEARDOWN=false): paused, not synced"})
+		return true
+	}
 	if !d.mutating {
 		d.note(&d.rep.WouldTeardown, AlbumNote{Pair: p.Name, Side: c.String(), AlbumID: p.AlbumIDs[c], Reason: teardownReason})
 		return true

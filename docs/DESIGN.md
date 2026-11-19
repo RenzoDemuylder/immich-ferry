@@ -144,6 +144,9 @@ Flow diagrams of every branch per sync period: [SYNC_FLOW.md](SYNC_FLOW.md) (ill
       (4) unpair (`Store.Reset`) and tombstone X (and the kept album) with the teardown reason. Teardown tombstones also block
       pairing by name (skipped, reported). Errors keep progress and retry next cycle; a pair in teardown is never synced, even
       if someone re-joins. Leave/delete errors are re-checked with a GET (not found = done). Dry run → `WouldTeardown`.
+      `DiscoveryTeardownOff` (`SYNC_DISCOVERY_TEARDOWN=false`): the trigger is never checked (no GET), the pair keeps
+      syncing, `album.delete`/`albumUser.delete` are not required; a pair with `Teardown` progress is paused (kept, pinned,
+      not synced, reported skipped) and resumes when re-enabled. Incompatible with `DiscoveryTeardownTrash` (config error).
       Lost `discovery.json`: re-paired by name and no `Created` (no members to backfill) → keeps syncing, never torn down; an
       interrupted teardown after (1) leaves the created album behind (manual cleanup). Lost pair state → nothing trashed.
       `DiscoveryDedicatedUser` (opt-in; the sync user owns only albums discovery created): an **unpinned** album owned by the
@@ -187,7 +190,8 @@ albums discovery creates and leaving/deleting them in a teardown)/thumbnail, alb
   `IMMICH_{A,B}_URL` (with/without `/api`), `IMMICH_{A,B}_API_KEY` | `_API_KEY_FILE`, `IMMICH_{A,B}_INSECURE_TLS`,
   `SYNC_{A,B}_ALBUM_ID` (UUID, required unless discovery), `SYNC_DISCOVERY` off|all|marker, `SYNC_DISCOVERY_MARKER` 🔁,
   `SYNC_DISCOVERY_SHARE_{A,B}` (comma list of emails/user ids; requires discovery), `SYNC_DISCOVERY_SHARE_ROLE` editor|viewer,
-  `SYNC_DISCOVERY_TEARDOWN_TRASH` false (requires a share list; YAML `discoveryShare.trashOnTeardown`),
+  `SYNC_DISCOVERY_TEARDOWN` true (YAML `discoveryShare.teardown`),
+  `SYNC_DISCOVERY_TEARDOWN_TRASH` false (requires a share list and the teardown; YAML `discoveryShare.trashOnTeardown`),
   `SYNC_DISCOVERY_DEDICATED_USER` false (requires a share list; YAML `discoveryShare.dedicatedUser`),
   `SYNC_PAIR_NAME` (default), `SYNC_INTERVAL` 15m, `SYNC_CONCURRENCY` 4,
   `SYNC_STATE_DIR` /data, `SYNC_TMP_DIR` (os temp), `SYNC_TMP_BUDGET` (0=unlimited), `SYNC_DRY_RUN`, `SYNC_PROPAGATE_REMOVALS` true,

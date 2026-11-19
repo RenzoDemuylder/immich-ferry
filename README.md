@@ -82,6 +82,9 @@ With discovery, each cycle lists the albums on both sides:
   Immich's trash retention. **Caveat for trashing:** a member can add the sync user's photos to an album of their own, which the
   sync user cannot see; those photos then vanish from that album too. That is why trashing is off by default.
   Pairs from older versions are recorded as "created" when the sync user owns exactly one of the two albums and it has members.
+  Set `SYNC_DISCOVERY_TEARDOWN=false` to turn the teardown off: such a pair then simply keeps syncing (the key no longer needs
+  `album.delete` / `albumUser.delete`), and a teardown already in progress is paused (pair kept, not synced, reported as
+  skipped) until it is turned on again.
 - Ambiguous names (several albums with the same name on one side, or the name already used by a paired or viewer-only album) are
   skipped and reported in `/status`, the logs and `once`/`validate` output. Albums without a name are skipped.
 - An album that is no longer selected (marker removed from both sides, or no longer editable) **stops being synced**: albums and
@@ -116,7 +119,7 @@ With discovery, each cycle lists the albums on both sides:
 | `asset.update` | metadata sync, live-photo linking (`SYNC_METADATA`, live photos) |
 | `album.update` | album name/description sync (`SYNC_ALBUM_INFO`) |
 | `asset.delete` | restoring from trash (`SYNC_RESTORE_TRASHED`); trashing on teardown (`SYNC_DISCOVERY_TEARDOWN_TRASH`) |
-| `album.delete` / `albumUser.delete` | teardown when everyone left a shared album: delete it, leave its counterpart (`SYNC_DISCOVERY_SHARE_*` set) |
+| `album.delete` / `albumUser.delete` | teardown when everyone left a shared album: delete it, leave its counterpart (`SYNC_DISCOVERY_SHARE_*` set, `SYNC_DISCOVERY_TEARDOWN` not `false`) |
 
 **Upgrading with `SYNC_DISCOVERY_SHARE_*` set:** the key now also needs `album.delete` and `albumUser.delete`; preflight fails
 with the missing list until you add them.
@@ -173,7 +176,8 @@ instances); environment variables override the file. Secrets can be supplied as 
 | `SYNC_DISCOVERY_SHARE_A`, `SYNC_DISCOVERY_SHARE_B` | - | comma-separated emails or user ids on that side to share albums created by discovery with |
 | `SYNC_DISCOVERY_SHARE_ROLE` | `editor` | `editor` or `viewer`: role of those users on created albums |
 | `SYNC_DISCOVERY_DEDICATED_USER` | `false` | the sync user owns only albums discovery created: never sync or pair an unpaired album it owns without other members (needs `SYNC_DISCOVERY_SHARE_*`) |
-| `SYNC_DISCOVERY_TEARDOWN_TRASH` | `false` | when everyone left a created album, also trash the photos the sync user uploaded into it (see caveat above; needs `SYNC_DISCOVERY_SHARE_*`) |
+| `SYNC_DISCOVERY_TEARDOWN` | `true` | tear down a pair when everyone left its created, shared album (see above); `false` keeps syncing it and pauses a teardown in progress |
+| `SYNC_DISCOVERY_TEARDOWN_TRASH` | `false` | when everyone left a created album, also trash the photos the sync user uploaded into it (see caveat above; needs `SYNC_DISCOVERY_SHARE_*` and the teardown) |
 | `SYNC_PAIR_NAME` | default | name of the single pair (`^[a-z0-9][a-z0-9-]{0,62}$`) |
 | `SYNC_CONFIG_FILE` | - | YAML file with `pairs` (see below) |
 | `SYNC_INTERVAL` | `15m` | time between cycles |
@@ -201,7 +205,7 @@ YAML file layout (all keys optional except `pairs` when discovery is off; see `e
 instances: {a: {url, apiKey, apiKeyFile, insecureTLS}, b: {url, apiKey, apiKeyFile, insecureTLS}}
 sync: {interval, concurrency, tmpDir, tmpBudget, dryRun, propagateRemovals, maxRemovalRatio, maxRemovalsMin, conflictWinner,
        metadata, albumInfo, restoreTrashed, copyBudget, pendingMetaTimeout, discovery, discoveryMarker,
-       discoveryShare: {a: [emails or ids], b: [...], role, trashOnTeardown, dedicatedUser}}
+       discoveryShare: {a: [emails or ids], b: [...], role, teardown, trashOnTeardown, dedicatedUser}}
 pairs: [{name, a: {albumId}, b: {albumId}}]
 stateDir: /data
 httpAddr: ":8080"

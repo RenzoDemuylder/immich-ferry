@@ -483,3 +483,81 @@ func TestRequiredPermissionsTeardown(t *testing.T) {
 		t.Errorf("with trash: %v", RequiredPermissions(o))
 	}
 }
+
+// With the teardown disabled, a pair whose created album everyone left keeps syncing and
+// nothing is left, trashed or deleted (the key lacks album.delete/albumUser.delete).
+func TestTeardownDisabledKeepsSyncing(t *testing.T) {
+	e := newTeardownEnv(t, func(o *Options) {
+		o.DiscoveryTeardownOff = true
+		o.DiscoveryTeardownTrash = false
+	})
+	e.fb.LeaveAlbum(e.holidayB, e.dave)
+	for _, dry := range []bool{true, false} {
+		e.eng.o.DryRun = dry
+		ps, rep := e.discover()
+		if !hasPair(ps, e.pair.Name) || len(rep.TornDown)+len(rep.WouldTeardown)+len(rep.Skipped) != 0 || rep.Problems() {
+			t.Fatalf("dry=%v pairs %v report %+v", dry, pairNames(ps), rep)
+		}
+	}
+	if _, ok := e.fb.Album(e.holidayB); !ok {
+		t.Error("created album deleted")
+	}
+	if !e.memberOfA() {
+		t.Error("sync user left the original album")
+	}
+	e.seed(e.fa, e.carol, e.holidayA, "h4")
+	if s, err := e.eng.RunPair(context.Background(), e.pair); err != nil || s.Copied.AtoB != 1 {
+		t.Fatalf("sync after everyone left: %v %+v", err, s)
+	}
+	for _, p := range e.loadDiscovery().Pairs {
+		if p.Teardown != nil {
+			t.Fatalf("teardown recorded: %+v", p)
+		}
+	}
+}
+
+// Disabling the teardown while one is in progress pauses it: the pair is kept but never
+// synced; enabling it again finishes the teardown.
+func TestTeardownDisabledPausesInProgress(t *testing.T) {
+	e := newTeardownEnv(t)
+	e.fb.LeaveAlbum(e.holidayB, e.dave)
+	e.fb.Inject(fakeimmich.Fault{Method: "DELETE", PathPrefix: "/albums/" + e.holidayB, Status: 503, Times: 2}) // MaxRetries 1
+	if ps, rep := e.discover(); hasPair(ps, e.pair.Name) || len(rep.Errors) != 1 {
+		t.Fatalf("pairs %v report %+v", pairNames(ps), rep)
+	}
+
+	off := e.opts
+	off.DiscoveryTeardownOff, off.DiscoveryTeardownTrash = true, false
+	e.eng = e.newEngine(off)
+	ps, rep := e.discover()
+	if hasPair(ps, e.pair.Name) || len(rep.TornDown) != 0 || len(rep.Skipped) != 1 || rep.Skipped[0].Pair != e.pair.Name || len(rep.Errors) != 0 {
+		t.Fatalf("paused: pairs %v report %+v", pairNames(ps), rep)
+	}
+	if _, ok := e.fb.Album(e.holidayB); !ok {
+		t.Error("album deleted while the teardown is disabled")
+	}
+	if d := e.loadDiscovery(); len(d.Pairs) == 0 || d.Pairs[0].Teardown == nil {
+		t.Fatalf("progress lost: %+v", d.Pairs)
+	}
+
+	e.eng = e.newEngine(e.opts)
+	if ps, rep := e.discover(); hasPair(ps, e.pair.Name) || len(rep.TornDown) != 1 || len(rep.Errors) != 0 {
+		t.Fatalf("resumed: pairs %v report %+v", pairNames(ps), rep)
+	}
+	if _, ok := e.fb.Album(e.holidayB); ok {
+		t.Error("album not deleted on resume")
+	}
+}
+
+func TestRequiredPermissionsTeardownOff(t *testing.T) {
+	o := baseOptions()
+	o.Discovery = DiscoveryAll
+	o.RestoreTrashed = false
+	o.DiscoveryShare[A] = []string{"x@example.test"}
+	o.DiscoveryTeardownOff = true
+	for _, p := range RequiredPermissions(o) {
+		if p == "album.delete" || p == "albumUser.delete" || p == "asset.delete" {
+			t.Errorf("teardown off needs %s: %v", p, RequiredPermissions(o))
+		}
+	}
+}

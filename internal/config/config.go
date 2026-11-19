@@ -170,6 +170,7 @@ func Redacted(c *Config) map[string]any {
 			"discoveryMarker":    o.DiscoveryMarker,
 			"discoveryShare": map[string]any{
 				"a": nonNil(o.DiscoveryShare[0]), "b": nonNil(o.DiscoveryShare[1]), "role": o.DiscoveryShareRole,
+				"teardown":        !o.DiscoveryTeardownOff,
 				"trashOnTeardown": o.DiscoveryTeardownTrash,
 				"dedicatedUser":   o.DiscoveryDedicatedUser,
 			},

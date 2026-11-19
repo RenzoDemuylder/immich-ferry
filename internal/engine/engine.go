@@ -90,6 +90,10 @@ type Options struct {
 	// member may have put such assets into an album of their own, which the sync user
 	// cannot see.
 	DiscoveryTeardownTrash bool
+	// DiscoveryTeardownOff disables the teardown: a pair whose created album everyone
+	// left keeps syncing like any other pair. A teardown already in progress is paused
+	// (pair kept, not synced) until the teardown is enabled again.
+	DiscoveryTeardownOff bool
 	// DiscoveryDedicatedUser declares that the sync user owns no albums except those
 	// discovery created. Then an unpaired album it owns with no other member, on a side
 	// with DiscoveryShare, can only be one everyone left: it is never synced and blocks

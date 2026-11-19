@@ -28,7 +28,7 @@ func RequiredPermissions(o Options) []string {
 	if o.Discovery != DiscoveryOff {
 		set["album.create"] = true
 	}
-	if len(o.DiscoveryShare[A]) > 0 || len(o.DiscoveryShare[B]) > 0 {
+	if !o.DiscoveryTeardownOff && (len(o.DiscoveryShare[A]) > 0 || len(o.DiscoveryShare[B]) > 0) {
 		// Teardown when everyone a created album was shared with has left it: delete
 		// that album and leave its counterpart.
 		set["album.delete"] = true

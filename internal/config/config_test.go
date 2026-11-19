@@ -341,6 +341,7 @@ func TestDiscoveryShare(t *testing.T) {
 		wantRole  string
 		wantTrash bool
 		wantDedic bool
+		wantOff   bool
 		wantErr   string
 	}{
 		{name: "default", env: noPair(nil), wantRole: "editor"},
@@ -371,6 +372,16 @@ func TestDiscoveryShare(t *testing.T) {
 			want: [2][]string{nil, {"you@y.org"}}, wantRole: "editor", wantDedic: true},
 		{name: "dedicated user needs share", env: noPair(map[string]string{"SYNC_DISCOVERY_DEDICATED_USER": "true"}),
 			wantErr: "only applies to shared albums"},
+		{name: "teardown off env", env: noPair(map[string]string{"SYNC_DISCOVERY_SHARE_B": "you@y.org", "SYNC_DISCOVERY_TEARDOWN": "false"}),
+			want: [2][]string{nil, {"you@y.org"}}, wantRole: "editor", wantOff: true},
+		{name: "teardown off yaml", env: noPair(map[string]string{"SYNC_CONFIG_FILE": "/c"}),
+			yaml: "sync: {discoveryShare: {b: [you@y.org], teardown: false}}\n",
+			want: [2][]string{nil, {"you@y.org"}}, wantRole: "editor", wantOff: true},
+		{name: "teardown env overrides yaml", env: noPair(map[string]string{"SYNC_CONFIG_FILE": "/c", "SYNC_DISCOVERY_TEARDOWN": "true"}),
+			yaml: "sync: {discoveryShare: {b: [you@y.org], teardown: false}}\n",
+			want: [2][]string{nil, {"you@y.org"}}, wantRole: "editor"},
+		{name: "teardown trash needs teardown", env: noPair(map[string]string{"SYNC_DISCOVERY_SHARE_B": "you@y.org",
+			"SYNC_DISCOVERY_TEARDOWN": "false", "SYNC_DISCOVERY_TEARDOWN_TRASH": "true"}), wantErr: "needs the teardown"},
 		{name: "teardown trash needs share", env: noPair(map[string]string{"SYNC_DISCOVERY_TEARDOWN_TRASH": "true"}),
 			wantErr: "only applies to shared albums"},
 	} {
@@ -386,7 +397,8 @@ func TestDiscoveryShare(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(c.Engine.DiscoveryShare, tc.want) || c.Engine.DiscoveryShareRole != tc.wantRole ||
-				c.Engine.DiscoveryTeardownTrash != tc.wantTrash || c.Engine.DiscoveryDedicatedUser != tc.wantDedic {
+				c.Engine.DiscoveryTeardownTrash != tc.wantTrash || c.Engine.DiscoveryDedicatedUser != tc.wantDedic ||
+				c.Engine.DiscoveryTeardownOff != tc.wantOff {
 				t.Fatalf("share %q role %q", c.Engine.DiscoveryShare, c.Engine.DiscoveryShareRole)
 			}
 		})

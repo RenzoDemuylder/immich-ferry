@@ -25,7 +25,7 @@ sync:
   # discovery: marker
   # discoveryMarker: "🔁"
   # Share albums created by discovery with these users of each side (emails or user ids):
-  # discoveryShare: {a: [alice@example.com], b: [bob@example.com], role: editor, trashOnTeardown: false, dedicatedUser: false}
+  # discoveryShare: {a: [alice@example.com], b: [bob@example.com], role: editor, teardown: true, trashOnTeardown: false, dedicatedUser: false}
 pairs:
   - name: family
     a: {albumId: 11111111-1111-1111-1111-111111111111}
